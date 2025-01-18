@@ -20,26 +20,25 @@ $activateLogs = $true # Set $false to disable logs
 ############
 # Non-modifiable part
 # Ask for the path of the file containing the URLs
-$FichierURLs = Read-Host "Enter the path of the file containing the URLs (default: $URLFileDefault)"
-if ([string]::IsNullOrWhiteSpace($FichierURLs)) {
-    $FichierURLs = $URLFileDefault
+$URLFile = Read-Host "Enter the path of the file containing the URLs (default: $URLFileDefault)"
+if ([string]::IsNullOrWhiteSpace($URLFile)) {
+    $URLFile = $URLFileDefault
 }
 
 # Ask for the download folder
-$DossierDL = Read-Host "Enter the folder to save the files (default: $DLFolderDefault)"
-if ([string]::IsNullOrWhiteSpace($DossierDL)) {
-    $DossierDL = $DLFolderDefault
+$DLFolder = Read-Host "Enter the folder to save the files (default: $DLFolderDefault)"
+if ([string]::IsNullOrWhiteSpace($DLFolder)) {
+    $DLFolder = $DLFolderDefault
 }
 
-# Non-modifiable part
-if (!(Test-Path -Path $DossierDL)) { New-Item -ItemType Directory -Path $DossierDL | Out-Null }
-if (!(Test-Path -Path $FichierURLs)) {
-    Write-Host "The file containing the URLs ($FichierURLs) could not be found."
+if (!(Test-Path -Path $DLFolder)) { New-Item -ItemType Directory -Path $DLFolder | Out-Null }
+if (!(Test-Path -Path $URLFile)) {
+    Write-Host "The file containing the URLs ($URLFile) could not be found."
     Read-Host "Press Enter to exit..."
     exit
 }
 
-$URLs = Get-Content -Path $FichierURLs
+$URLs = Get-Content -Path $URLFile
 $Total = $URLs.Count
 $Succes = 0
 $Failures = 0
@@ -49,20 +48,20 @@ $LogFile = "MLD_logs.txt"
 # If logs are enabled, initialize the StreamWriter
 if ($activateLogs) {
     # Add a header with the date and time of the launch
-    $DateLancement = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+    $StartDate = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
     $StreamWriter = [System.IO.StreamWriter]::new($LogFile, $true)
 
     # Add a separator at the beginning of the logs for this launch
-    $StreamWriter.WriteLine("`n---------------------------- Launch: $DateLancement ----------------------------`n")
+    $StreamWriter.WriteLine("`n---------------------------- Launch: $StartDate ----------------------------`n")
 }
 
 # Filter valid URLs (ignore empty lines or lines containing only spaces)
-$URLsValides = $URLs | Where-Object { ![string]::IsNullOrWhiteSpace($_) -and $_ -match "^(http|https)://" }
-$TotalValides = $URLsValides.Count
+$validURLs = $URLs | Where-Object { ![string]::IsNullOrWhiteSpace($_) -and $_ -match "^(http|https)://" }
+$TotalValids = $validURLs.Count
 
-for ($Index = 0; $Index -lt $TotalValides; $Index++) {
-    $URL = $URLsValides[$Index].Trim()  # Use valid URLs
-    Write-Progress -Activity "Downloading files..." -Status "Downloading $(($Index + 1)) of $TotalValides" -PercentComplete ((($Index + 1) / $TotalValides) * 100)
+for ($Index = 0; $Index -lt $TotalValids; $Index++) {
+    $URL = $validURLs[$Index].Trim()  # Use valid URLs
+    Write-Progress -Activity "Downloading files..." -Status "Downloading $(($Index + 1)) of $TotalValids" -PercentComplete ((($Index + 1) / $TotalValids) * 100)
 
     try {
         if ($URL -match "^(http|https)://") {
@@ -72,13 +71,13 @@ for ($Index = 0; $Index -lt $TotalValides; $Index++) {
                 $FileName = (Get-Date -Format "yyyyMMdd_HHmmss") + ".dat"
             }
 
-            $DestinationPath = Join-Path -Path $DossierDL -ChildPath $FileName
+            $DestinationPath = Join-Path -Path $DLFolder -ChildPath $FileName
             $Counter = 1
             while (Test-Path -Path $DestinationPath) {
                 $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
                 $Extension = [System.IO.Path]::GetExtension($FileName)
                 $FileName = "$BaseName($Counter)$Extension"
-                $DestinationPath = Join-Path -Path $DossierDL -ChildPath $FileName
+                $DestinationPath = Join-Path -Path $DLFolder -ChildPath $FileName
                 $Counter++
             }
 
@@ -101,7 +100,7 @@ for ($Index = 0; $Index -lt $TotalValides; $Index++) {
 
 # Add a separator at the end of the logs for this launch if logs are enabled
 if ($activateLogs) {
-    $StreamWriter.WriteLine("`n---------------------------- End of Launch: $DateLancement ----------------------------`n")
+    $StreamWriter.WriteLine("`n---------------------------- End of Launch: $StartDate ----------------------------`n")
     $StreamWriter.Close()
 }
 
@@ -109,7 +108,7 @@ Write-Host "Downloads completed."
 Write-Host "Success: $Succes"
 Write-Host "Failures: $Failures"
 Write-Host "Ignored lines (empty or without a valid URL): $SkippedLines"
-Write-Host "Files are saved in: $DossierDL"
+Write-Host "Files are saved in: $DLFolder"
 
 if ($activateLogs) {
     Write-Host "Details in the log file: $LogFile"
